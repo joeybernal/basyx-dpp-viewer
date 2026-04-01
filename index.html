@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Battery Passport</title>
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@3.10.5/dist/vuetify.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; }
+        .section-content { min-height: 420px; }
+        .fixed-scroll-btn { position: fixed; bottom: 50px; right: 16px; z-index: 999999; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <v-app>
+
+        <v-app-bar color="primary" elevation="1" density="compact" class="px-3">
+            <div class="d-flex align-center">
+                <img :src="isDarkMode ? './Logo_dark.png' : './Logo_light.png'"
+                     alt="Logo" style="height:28px;max-height:28px;" class="mr-3"/>
+                <v-divider vertical class="mx-2" color="white" opacity="0.3"></v-divider>
+                <div class="text-subtitle-1 font-weight-medium text-white">EU Digital Battery Passport</div>
+            </div>
+            <v-spacer></v-spacer>
+            <div v-if="shell.idShort" class="text-caption text-white mr-3 d-none d-sm-block">
+                {{ shell.idShort }}
+            </div>
+            <v-btn :icon="isDarkMode ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+                   size="small" variant="text" color="white" @click="toggleTheme"></v-btn>
+        </v-app-bar>
+
+        <v-main>
+            <v-container class="pa-4 pa-md-6" fluid>
+
+                <div v-if="isLoading" class="d-flex justify-center align-center" style="min-height:60vh;">
+                    <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+                    <span class="ml-4 text-h6">Loading Battery Passport&#8230;</span>
+                </div>
+
+                <v-alert v-else-if="errorMessage" type="error" variant="tonal" class="mb-4">
+                    <v-alert-title>Failed to load passport</v-alert-title>
+                    <div class="mt-1">{{ errorMessage }}</div>
+                    <v-btn size="small" color="primary" class="mt-2" @click="showDebug = !showDebug">Debug info</v-btn>
+                    <v-card v-if="showDebug" class="mt-3 pa-3" border>
+                        <pre style="font-size:0.75rem;white-space:pre-wrap;">{{ debugLog.join('\n') }}</pre>
+                    </v-card>
+                </v-alert>
+
+                <v-alert v-else-if="!shell.id && !isLoading" type="info" variant="tonal" class="mb-4">
+                    <v-alert-title>No passport ID provided</v-alert-title>
+                    <div class="mt-1">Supply the AAS ID as a base64url-encoded <code>id</code> query parameter.</div>
+                    <div class="mt-2 text-caption">
+                        VoltaTech VT-75 example:<br>
+                        <code>?id=aHR0cHM6Ly92b2x0YXRlY2guZGUvYWFzL2JhdHRlcnktcGFzc3BvcnQvVk9MVDc1LTIwMjQtMDAx</code>
+                    </div>
+                </v-alert>
+
+                <v-card v-if="shell.id" border rounded="lg">
+                    <v-row no-gutters>
+
+                        <!-- Sidebar -->
+                        <v-col cols="12" md="3">
+                            <v-card height="100%" flat class="pa-4" color="surface" rounded="0">
+
+                                <v-sheet border rounded="lg" class="pa-3 mb-3" elevation="2">
+                                    <div class="d-flex align-center mb-1">
+                                        <v-icon color="primary" class="mr-2">mdi-passport</v-icon>
+                                        <span class="text-subtitle-2 font-weight-bold">Digital Battery Passport</span>
+                                    </div>
+                                    <div class="text-caption text-medium-emphasis">{{ sm.BatteryIdentification && sm.BatteryIdentification.BatteryModel }}</div>
+                                    <div class="mt-2">
+                                        <v-chip size="x-small" color="primary" variant="tonal">
+                                            {{ sm.BatteryIdentification && sm.BatteryIdentification.BatteryCategory }} Battery
+                                        </v-chip>
+                                        <v-chip size="x-small" color="green" variant="tonal" class="ml-1">EU 2023/1542</v-chip>
+                                    </div>
+                                </v-sheet>
+
+                                <v-sheet border rounded="lg" class="pa-3 mb-3" color="green-lighten-5">
+                                    <div class="text-caption text-medium-emphasis mb-1">Total Carbon Footprint</div>
+                                    <div class="text-h5 font-weight-bold text-green-darken-2">
+                                        {{ sm.CarbonFootprint && sm.CarbonFootprint.TotalCarbonFootprint_kgCO2e_per_kWh }}
+                                        <span class="text-caption font-weight-regular"> kgCO&#8322;e/kWh</span>
+                                    </div>
+                                    <div class="d-flex align-center mt-1">
+                                        <v-icon size="small" color="primary" class="mr-1">mdi-certificate-outline</v-icon>
+                                        <span class="text-caption">Class <strong>{{ sm.CarbonFootprint && sm.CarbonFootprint.PerformanceClass }}</strong></span>
+                                    </div>
+                                </v-sheet>
+
+                                <v-sheet border rounded="lg" class="pa-3 mb-4">
+                                    <div class="text-caption text-medium-emphasis mb-1">State of Health</div>
+                                    <v-progress-linear
+                                        :model-value="parseFloat((sm.StateOfHealth && sm.StateOfHealth.StateOfHealth_pct) || 0)"
+                                        color="green" height="10" rounded bg-color="grey-lighten-3">
+                                    </v-progress-linear>
+                                    <div class="text-h6 font-weight-bold mt-1">{{ sm.StateOfHealth && sm.StateOfHealth.StateOfHealth_pct }}%</div>
+                                    <div class="text-caption text-medium-emphasis">
+                                        {{ sm.StateOfHealth && sm.StateOfHealth.FullChargeCycles }} cycles
+                                    </div>
+                                </v-sheet>
+
+                                <v-list active-class="border-thin border-primary border-opacity-25"
+                                        bg-color="transparent" class="pa-0 ga-1 d-flex flex-column"
+                                        color="primary" density="compact" slim>
+                                    <v-list-item v-for="(s,i) in sections" :key="i"
+                                        border="thin surface" rounded="lg"
+                                        :prepend-icon="s.icon" :title="s.title"
+                                        :value="i" :active="activeSection===i"
+                                        style="cursor:pointer;user-select:none"
+                                        @click="activeSection=i" />
+                                </v-list>
+                            </v-card>
+                        </v-col>
+
+                        <!-- Main content -->
+                        <v-col cols="12" md="9">
+                            <v-card flat class="pa-4" rounded="0" style="position:relative;">
+
+                                <v-sheet border rounded="lg" class="px-6 py-4 mx-2 mb-2" elevation="2">
+                                    <v-row align="center">
+                                        <v-col cols="2">
+                                            <v-btn v-if="activeSection>0" icon="mdi-arrow-left"
+                                                   variant="text" color="primary" @click="activeSection--"></v-btn>
+                                        </v-col>
+                                        <v-col cols="8" class="text-center">
+                                            <div class="text-h6 font-weight-bold">{{ sections[activeSection].title }}</div>
+                                            <div class="text-caption text-medium-emphasis">{{ sections[activeSection].subtitle }}</div>
+                                        </v-col>
+                                        <v-col cols="2" class="d-flex justify-end">
+                                            <v-btn v-if="activeSection<sections.length-1" icon="mdi-arrow-right"
+                                                   variant="text" color="primary" @click="activeSection++"></v-btn>
+                                        </v-col>
+                                    </v-row>
+                                </v-sheet>
+
+                                <div class="section-content pa-2">
+
+                                    <!-- 0. IDENTIFICATION -->
+                                    <div v-show="activeSection===0">
+                                        <v-row class="mt-2" v-if="sm.BatteryIdentification">
+                                            <v-col cols="12" md="6"><v-text-field label="Battery Passport ID" :model-value="sm.BatteryIdentification.BatteryPassportId" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-identifier"/></v-col>
+                                            <v-col cols="12" md="6"><v-text-field label="Serial Number" :model-value="sm.BatteryIdentification.BatterySerialNumber" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-barcode"/></v-col>
+                                            <v-col cols="12" md="6"><v-text-field label="Battery Model" :model-value="sm.BatteryIdentification.BatteryModel" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-battery"/></v-col>
+                                            <v-col cols="12" md="6"><v-text-field label="Category" :model-value="sm.BatteryIdentification.BatteryCategory" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-tag-outline"/></v-col>
+                                            <v-col cols="12" md="4"><v-text-field label="Nominal Capacity" :model-value="sm.BatteryIdentification.NominalCapacity_kWh + ' kWh'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-lightning-bolt"/></v-col>
+                                            <v-col cols="12" md="4"><v-text-field label="Nominal Voltage" :model-value="sm.BatteryIdentification.NominalVoltage_V + ' V'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-sine-wave"/></v-col>
+                                            <v-col cols="12" md="4"><v-text-field label="Manufacturing Date" :model-value="sm.BatteryIdentification.ManufacturingDate" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-calendar"/></v-col>
+                                            <v-col cols="12" md="8"><v-text-field label="Manufacturer" :model-value="sm.BatteryIdentification.ManufacturerName" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-factory"/></v-col>
+                                            <v-col cols="12" md="4"><v-text-field label="CE Marking" :model-value="sm.BatteryIdentification.CEMarking === 'true' ? 'Certified &#10003;' : 'Not certified'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-certificate"/></v-col>
+                                            <v-col cols="12"><v-text-field label="EU Declaration of Conformity Ref." :model-value="sm.BatteryIdentification.EUDeclarationOfConformityRef" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-file-certificate-outline"/></v-col>
+                                        </v-row>
+                                    </div>
+
+                                    <!-- 1. CARBON FOOTPRINT -->
+                                    <div v-show="activeSection===1">
+                                        <v-card v-if="sm.CarbonFootprint" variant="tonal" color="green" class="mt-2 mb-4">
+                                            <v-card-text>
+                                                <v-row align="center">
+                                                    <v-col cols="auto"><v-icon size="52" color="green-darken-2">mdi-molecule-co2</v-icon></v-col>
+                                                    <v-col>
+                                                        <div class="text-h3 font-weight-bold">
+                                                            {{ sm.CarbonFootprint.TotalCarbonFootprint_kgCO2e_per_kWh }}
+                                                            <span class="text-h6 font-weight-regular"> kgCO&#8322;e / kWh</span>
+                                                        </div>
+                                                        <div class="text-subtitle-1">Total lifecycle carbon footprint</div>
+                                                        <v-chip color="primary" variant="tonal" size="small" class="mt-1">
+                                                            Performance Class {{ sm.CarbonFootprint.PerformanceClass }}
+                                                        </v-chip>
+                                                    </v-col>
+                                                </v-row>
+                                            </v-card-text>
+                                        </v-card>
+
+                                        <div class="text-subtitle-1 font-weight-medium mb-3">Lifecycle stage breakdown</div>
+                                        <v-row v-if="sm.CarbonFootprint">
+                                            <v-col cols="12" md="4">
+                                                <v-card border rounded="lg" class="pa-3 h-100">
+                                                    <div class="d-flex align-center mb-2">
+                                                        <v-icon color="orange" class="mr-2">mdi-factory</v-icon>
+                                                        <span class="text-subtitle-2 font-weight-bold">Manufacturing</span>
+                                                    </div>
+                                                    <div class="text-h5 font-weight-bold text-orange">
+                                                        {{ sm.CarbonFootprint.ManufacturingStage && sm.CarbonFootprint.ManufacturingStage.Total_kgCO2e_per_kWh }}
+                                                        <span class="text-caption font-weight-regular"> kgCO&#8322;e/kWh</span>
+                                                    </div>
+                                                    <v-divider class="my-2"></v-divider>
+                                                    <div class="text-caption mb-1">Cells: <strong>{{ sm.CarbonFootprint.ManufacturingStage && sm.CarbonFootprint.ManufacturingStage.CellManufacturing_kgCO2e_per_kWh }}</strong> kgCO&#8322;e/kWh</div>
+                                                    <div class="text-caption mb-1">Case (Aurora): <strong>{{ sm.CarbonFootprint.ManufacturingStage && sm.CarbonFootprint.ManufacturingStage.CaseManufacturing_kgCO2e }}</strong> kgCO&#8322;e</div>
+                                                    <div class="text-caption mb-1">BMS: <strong>{{ sm.CarbonFootprint.ManufacturingStage && sm.CarbonFootprint.ManufacturingStage.BMSManufacturing_kgCO2e }}</strong> kgCO&#8322;e</div>
+                                                    <div class="text-caption">Assembly: <strong>{{ sm.CarbonFootprint.ManufacturingStage && sm.CarbonFootprint.ManufacturingStage.PackAssembly_kgCO2e_per_kWh }}</strong> kgCO&#8322;e/kWh</div>
+                                                </v-card>
+                                            </v-col>
+                                            <v-col cols="12" md="4">
+                                                <v-card border rounded="lg" class="pa-3 h-100">
+                                                    <div class="d-flex align-center mb-2">
+                                                        <v-icon color="blue" class="mr-2">mdi-truck-outline</v-icon>
+                                                        <span class="text-subtitle-2 font-weight-bold">Distribution</span>
+                                                    </div>
+                                                    <div class="text-h5 font-weight-bold text-blue">
+                                                        {{ sm.CarbonFootprint.DistributionStage && sm.CarbonFootprint.DistributionStage.Total_kgCO2e_per_kWh }}
+                                                        <span class="text-caption font-weight-regular"> kgCO&#8322;e/kWh</span>
+                                                    </div>
+                                                    <div class="text-caption text-medium-emphasis mt-2">Transport from manufacturing to customer</div>
+                                                </v-card>
+                                            </v-col>
+                                            <v-col cols="12" md="4">
+                                                <v-card border rounded="lg" class="pa-3 h-100">
+                                                    <div class="d-flex align-center mb-2">
+                                                        <v-icon color="green" class="mr-2">mdi-recycle</v-icon>
+                                                        <span class="text-subtitle-2 font-weight-bold">End of Life</span>
+                                                    </div>
+                                                    <div class="text-h5 font-weight-bold text-green-darken-2">
+                                                        {{ sm.CarbonFootprint.EndOfLifeStage && sm.CarbonFootprint.EndOfLifeStage.Total_kgCO2e_per_kWh }}
+                                                        <span class="text-caption font-weight-regular"> kgCO&#8322;e/kWh</span>
+                                                    </div>
+                                                    <div class="text-caption text-medium-emphasis mt-2">Negative = carbon credit from recycling</div>
+                                                </v-card>
+                                            </v-col>
+                                        </v-row>
+                                        <v-sheet v-if="sm.CarbonFootprint" border rounded="lg" class="pa-3 mt-4">
+                                            <div class="d-flex align-center flex-wrap ga-2">
+                                                <v-icon color="primary" class="mr-1">mdi-check-decagram</v-icon>
+                                                <span class="text-body-2 font-weight-medium">Third-party verified</span>
+                                                <v-chip size="small" variant="tonal" color="primary">{{ sm.CarbonFootprint.VerificationBody }}</v-chip>
+                                                <v-chip size="small" variant="outlined">{{ sm.CarbonFootprint.CalculationMethod }}</v-chip>
+                                            </div>
+                                        </v-sheet>
+                                    </div>
+
+                                    <!-- 2. MATERIAL COMPOSITION -->
+                                    <div v-show="activeSection===2">
+                                        <v-row class="mt-2" v-if="sm.MaterialComposition">
+                                            <v-col cols="12" md="4"><v-text-field label="Battery Chemistry" :model-value="sm.MaterialComposition.BatteryChemistry" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-atom"/></v-col>
+                                            <v-col cols="12" md="8"><v-text-field label="Cathode Active Material" :model-value="sm.MaterialComposition.CathodeActiveMaterial" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-plus-circle-outline"/></v-col>
+                                            <v-col cols="12" md="6"><v-text-field label="Anode Material" :model-value="sm.MaterialComposition.AnodeMaterial" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-minus-circle-outline"/></v-col>
+                                            <v-col cols="12" md="6"><v-text-field label="Hazardous Substances" :model-value="sm.MaterialComposition.HazardousSubstances" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-shield-check-outline"/></v-col>
+                                        </v-row>
+                                        <v-row v-if="sm.MaterialComposition">
+                                            <v-col cols="12" md="6">
+                                                <v-card border rounded="lg" class="pa-3">
+                                                    <div class="text-subtitle-2 font-weight-bold mb-3">
+                                                        <v-icon color="orange" class="mr-1">mdi-diamond-stone</v-icon>Critical Raw Materials (kg)
+                                                    </div>
+                                                    <div v-for="(val, key) in sm.MaterialComposition.CriticalRawMaterials" :key="key" class="mb-2">
+                                                        <div class="d-flex justify-space-between text-body-2">
+                                                            <span>{{ formatKey(key) }}</span><strong>{{ val }} kg</strong>
+                                                        </div>
+                                                        <v-progress-linear :model-value="(parseFloat(val)/20)*100" color="orange" height="4" rounded bg-color="grey-lighten-3"></v-progress-linear>
+                                                    </div>
+                                                </v-card>
+                                            </v-col>
+                                            <v-col cols="12" md="6">
+                                                <v-card border rounded="lg" class="pa-3">
+                                                    <div class="text-subtitle-2 font-weight-bold mb-3">
+                                                        <v-icon color="green" class="mr-1">mdi-recycle</v-icon>Recycled Content (%)
+                                                    </div>
+                                                    <div v-for="(val, key) in sm.MaterialComposition.RecycledContent" :key="key" class="mb-2">
+                                                        <div class="d-flex justify-space-between text-body-2">
+                                                            <span>{{ formatKey(key) }}</span><strong>{{ val }}%</strong>
+                                                        </div>
+                                                        <v-progress-linear :model-value="parseFloat(val)" color="green" height="4" rounded bg-color="grey-lighten-3"></v-progress-linear>
+                                                    </div>
+                                                </v-card>
+                                            </v-col>
+                                        </v-row>
+                                    </div>
+
+                                    <!-- 3. PERFORMANCE AND HEALTH -->
+                                    <div v-show="activeSection===3">
+                                        <v-card v-if="sm.StateOfHealth" variant="tonal" color="blue" class="mt-2 mb-4">
+                                            <v-card-text>
+                                                <v-row align="center">
+                                                    <v-col cols="auto">
+                                                        <v-progress-circular :model-value="parseFloat(sm.StateOfHealth.StateOfHealth_pct||0)" color="blue-darken-2" :size="80" :width="10">
+                                                            <span class="text-body-2 font-weight-bold">{{ sm.StateOfHealth.StateOfHealth_pct }}%</span>
+                                                        </v-progress-circular>
+                                                    </v-col>
+                                                    <v-col>
+                                                        <div class="text-h6 font-weight-bold">State of Health</div>
+                                                        <div class="text-body-2">{{ sm.StateOfHealth.FullChargeCycles }} full charge cycles &middot; {{ sm.StateOfHealth.TotalEnergyThroughput_kWh }} kWh throughput</div>
+                                                        <div class="text-caption text-medium-emphasis">Last BMS read: {{ sm.StateOfHealth.LastBMSReadTimestamp }}</div>
+                                                    </v-col>
+                                                    <v-col cols="auto">
+                                                        <div class="text-center">
+                                                            <div class="text-h5 font-weight-bold">{{ sm.StateOfHealth.RemainingUsefulLife_cycles }}</div>
+                                                            <div class="text-caption">cycles remaining</div>
+                                                        </div>
+                                                    </v-col>
+                                                </v-row>
+                                            </v-card-text>
+                                        </v-card>
+                                        <div class="text-subtitle-1 font-weight-medium mb-3">Performance Specification</div>
+                                        <v-row>
+                                            <v-col cols="6" md="3" v-for="item in perfItems" :key="item.label">
+                                                <v-card border rounded="lg" class="pa-3 text-center">
+                                                    <v-icon :color="item.color" class="mb-1">{{ item.icon }}</v-icon>
+                                                    <div class="text-h6 font-weight-bold">{{ item.value }}</div>
+                                                    <div class="text-caption text-medium-emphasis">{{ item.label }}</div>
+                                                </v-card>
+                                            </v-col>
+                                        </v-row>
+                                        <div class="text-subtitle-1 font-weight-medium mt-4 mb-3">Live Battery Metrics</div>
+                                        <v-row v-if="sm.StateOfHealth">
+                                            <v-col cols="12" md="4"><v-text-field label="State of Charge" :model-value="sm.StateOfHealth.StateOfCharge_pct + ' %'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-battery-charging"/></v-col>
+                                            <v-col cols="12" md="4"><v-text-field label="Capacity Fade" :model-value="sm.StateOfHealth.CapacityFade_pct + ' %'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-trending-down"/></v-col>
+                                            <v-col cols="12" md="4"><v-text-field label="Internal Resistance" :model-value="sm.StateOfHealth.InternalResistanceNow_mOhm + ' m&#937;'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-resistor"/></v-col>
+                                        </v-row>
+                                    </div>
+
+                                    <!-- 4. CIRCULAR ECONOMY -->
+                                    <div v-show="activeSection===4">
+                                        <v-row class="mt-2" v-if="sm.CircularEconomy">
+                                            <v-col cols="12" md="4">
+                                                <v-card border rounded="lg" class="pa-4 text-center">
+                                                    <v-icon size="40" color="green" class="mb-2">mdi-recycle</v-icon>
+                                                    <div class="text-h4 font-weight-bold text-green">{{ sm.CircularEconomy.RecyclabilityRate_pct }}%</div>
+                                                    <div class="text-body-2">Recyclability Rate</div>
+                                                </v-card>
+                                            </v-col>
+                                            <v-col cols="12" md="4">
+                                                <v-card border rounded="lg" class="pa-4 text-center">
+                                                    <v-icon size="40" color="blue" class="mb-2">mdi-battery-sync-outline</v-icon>
+                                                    <div class="text-h4 font-weight-bold text-blue">{{ sm.CircularEconomy.SecondLifeMinSOH_pct }}%</div>
+                                                    <div class="text-body-2">Second Life Min SoH</div>
+                                                </v-card>
+                                            </v-col>
+                                            <v-col cols="12" md="4">
+                                                <v-card border rounded="lg" class="pa-4 text-center">
+                                                    <v-icon size="40" :color="sm.CircularEconomy.SecondLifeSuitability==='true' ? 'green' : 'grey'" class="mb-2">mdi-check-circle-outline</v-icon>
+                                                    <div class="text-h6 font-weight-bold" :class="sm.CircularEconomy.SecondLifeSuitability==='true' ? 'text-green' : 'text-grey'">
+                                                        {{ sm.CircularEconomy.SecondLifeSuitability==='true' ? 'Suitable' : 'Not Suitable' }}
+                                                    </div>
+                                                    <div class="text-body-2">Second Life</div>
+                                                </v-card>
+                                            </v-col>
+                                            <v-col cols="12">
+                                                <v-text-field label="Take-Back Scheme" :model-value="sm.CircularEconomy.TakeBackScheme" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-truck-delivery-outline"/>
+                                            </v-col>
+                                        </v-row>
+                                        <v-card v-if="sm.CircularEconomy && sm.CircularEconomy.EU2030RecoveryTargets" border rounded="lg" class="pa-3 mt-2">
+                                            <div class="text-subtitle-2 font-weight-bold mb-3">
+                                                <v-icon color="primary" class="mr-1">mdi-flag-checkered</v-icon>EU 2030 Material Recovery Targets
+                                            </div>
+                                            <div v-for="(val, key) in sm.CircularEconomy.EU2030RecoveryTargets" :key="key" class="mb-2">
+                                                <div class="d-flex justify-space-between text-body-2 mb-1">
+                                                    <span>{{ formatKey(key) }}</span><strong>{{ val }}% target</strong>
+                                                </div>
+                                                <v-progress-linear :model-value="parseFloat(val)" color="primary" height="6" rounded bg-color="grey-lighten-3"></v-progress-linear>
+                                            </div>
+                                        </v-card>
+                                    </div>
+
+                                    <!-- 5. SUPPLY CHAIN -->
+                                    <div v-show="activeSection===5">
+                                        <v-card v-if="sm.SupplyChainDueDiligence" border rounded="lg" class="pa-4 mt-2 mb-4">
+                                            <div class="text-subtitle-2 font-weight-bold mb-3">
+                                                <v-icon color="primary" class="mr-1">mdi-shield-account-outline</v-icon>Due Diligence
+                                            </div>
+                                            <v-row>
+                                                <v-col cols="12" md="6"><v-text-field label="Policy" :model-value="sm.SupplyChainDueDiligence.DueDiligencePolicy" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-file-document-outline"/></v-col>
+                                                <v-col cols="12" md="6"><v-text-field label="Third Party Audit" :model-value="sm.SupplyChainDueDiligence.ThirdPartyAuditRef" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-magnify-scan"/></v-col>
+                                                <v-col cols="12" md="6"><v-text-field label="Cobalt Sourcing" :model-value="sm.SupplyChainDueDiligence.CobaltSourcingCountry" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-map-marker-outline"/></v-col>
+                                                <v-col cols="12" md="6"><v-text-field label="Lithium Sourcing" :model-value="sm.SupplyChainDueDiligence.LithiumSourcingCountry" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-map-marker-outline"/></v-col>
+                                                <v-col cols="12"><v-text-field label="Conflict Minerals Free" :model-value="sm.SupplyChainDueDiligence.ConflictMineralsFree==='true' ? 'Confirmed \u2014 ILO Convention 138 & 182 compliant' : 'Not confirmed'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-check-circle-outline"/></v-col>
+                                            </v-row>
+                                        </v-card>
+
+                                        <div class="text-subtitle-1 font-weight-medium mb-3">Component Manufacturing Records</div>
+                                        <v-expansion-panels multiple :model-value="[0]" v-if="sm.ComponentRecords">
+                                            <v-expansion-panel class="mb-2" rounded="lg" border>
+                                                <v-expansion-panel-title>
+                                                    <v-icon color="primary" class="mr-2">mdi-package-variant-closed</v-icon>
+                                                    <div>
+                                                        <div class="text-subtitle-2 font-weight-bold">Battery Case</div>
+                                                        <div class="text-caption text-medium-emphasis">{{ sm.ComponentRecords.CaseRecord && sm.ComponentRecords.CaseRecord.SupplierName }}</div>
+                                                    </div>
+                                                    <v-spacer></v-spacer>
+                                                    <v-chip size="small" color="green" variant="tonal" class="mr-4">{{ sm.ComponentRecords.CaseRecord && sm.ComponentRecords.CaseRecord.QualityOutcome }}</v-chip>
+                                                </v-expansion-panel-title>
+                                                <v-expansion-panel-text>
+                                                    <v-row class="mt-1" v-if="sm.ComponentRecords.CaseRecord">
+                                                        <v-col cols="12" md="6"><v-text-field label="Supplier" :model-value="sm.ComponentRecords.CaseRecord.SupplierName" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-domain"/></v-col>
+                                                        <v-col cols="12" md="6"><v-text-field label="Batch ID" :model-value="sm.ComponentRecords.CaseRecord.BatchId" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-barcode"/></v-col>
+                                                        <v-col cols="12" md="6"><v-text-field label="Carbon Contribution" :model-value="sm.ComponentRecords.CaseRecord.CarbonContribution_kgCO2e + ' kgCO\u2082e'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-molecule-co2"/></v-col>
+                                                        <v-col cols="12" md="6"><v-text-field label="Recycled Aluminium" :model-value="sm.ComponentRecords.CaseRecord.RecycledAluminiumContent_pct + ' %'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-recycle"/></v-col>
+                                                        <v-col cols="12"><v-text-field label="Certificate of Conformance" :model-value="sm.ComponentRecords.CaseRecord.CertificateOfConformance" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-certificate-outline"/></v-col>
+                                                        <v-col cols="12">
+                                                            <v-sheet border rounded="lg" class="pa-3">
+                                                                <div class="text-caption text-medium-emphasis mb-2">
+                                                                    <v-icon size="small" class="mr-1">mdi-link-variant</v-icon>Open in BaSyx
+                                                                </div>
+                                                                <div class="d-flex flex-wrap ga-2">
+                                                                    <v-btn size="small" color="primary" variant="tonal"
+                                                                           :href="buildBasyxUILink(sm.ComponentRecords.CaseRecord.ComponentAAS_Id)"
+                                                                           target="_blank" prepend-icon="mdi-open-in-new">
+                                                                        Full Case Record
+                                                                    </v-btn>
+                                                                    <v-btn size="small" color="green" variant="tonal"
+                                                                           :href="buildBasyxUILink(sm.ComponentRecords.CaseRecord.ComponentAAS_Id, 'CarbonFootprint')"
+                                                                           target="_blank" prepend-icon="mdi-molecule-co2">
+                                                                        Carbon Footprint
+                                                                    </v-btn>
+                                                                </div>
+                                                            </v-sheet>
+                                                        </v-col>
+                                                    </v-row>
+                                                </v-expansion-panel-text>
+                                            </v-expansion-panel>
+
+                                            <v-expansion-panel class="mb-2" rounded="lg" border>
+                                                <v-expansion-panel-title>
+                                                    <v-icon color="orange" class="mr-2">mdi-battery</v-icon>
+                                                    <div>
+                                                        <div class="text-subtitle-2 font-weight-bold">Battery Cells</div>
+                                                        <div class="text-caption text-medium-emphasis">{{ sm.ComponentRecords.CellRecord && sm.ComponentRecords.CellRecord.SupplierName }}</div>
+                                                    </div>
+                                                    <v-spacer></v-spacer>
+                                                    <v-chip size="small" variant="outlined" class="mr-4">{{ sm.ComponentRecords.CellRecord && sm.ComponentRecords.CellRecord.CellChemistry }}</v-chip>
+                                                </v-expansion-panel-title>
+                                                <v-expansion-panel-text>
+                                                    <v-row class="mt-1" v-if="sm.ComponentRecords.CellRecord">
+                                                        <v-col cols="12" md="4"><v-text-field label="Supplier" :model-value="sm.ComponentRecords.CellRecord.SupplierName" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-domain"/></v-col>
+                                                        <v-col cols="12" md="4"><v-text-field label="Cell Count" :model-value="sm.ComponentRecords.CellRecord.CellCount" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-numeric"/></v-col>
+                                                        <v-col cols="12" md="4"><v-text-field label="Carbon (dominant)" :model-value="sm.ComponentRecords.CellRecord.CarbonContribution_kgCO2e_per_kWh + ' kgCO\u2082e/kWh'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-molecule-co2"/></v-col>
+                                                    </v-row>
+                                                </v-expansion-panel-text>
+                                            </v-expansion-panel>
+
+                                            <v-expansion-panel rounded="lg" border>
+                                                <v-expansion-panel-title>
+                                                    <v-icon color="purple" class="mr-2">mdi-chip</v-icon>
+                                                    <div>
+                                                        <div class="text-subtitle-2 font-weight-bold">Battery Management System</div>
+                                                        <div class="text-caption text-medium-emphasis">{{ sm.ComponentRecords.BMSRecord && sm.ComponentRecords.BMSRecord.SupplierName }}</div>
+                                                    </div>
+                                                </v-expansion-panel-title>
+                                                <v-expansion-panel-text>
+                                                    <v-row class="mt-1" v-if="sm.ComponentRecords.BMSRecord">
+                                                        <v-col cols="12" md="4"><v-text-field label="Supplier" :model-value="sm.ComponentRecords.BMSRecord.SupplierName" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-domain"/></v-col>
+                                                        <v-col cols="12" md="4"><v-text-field label="Firmware" :model-value="sm.ComponentRecords.BMSRecord.FirmwareVersion" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-code-tags"/></v-col>
+                                                        <v-col cols="12" md="4"><v-text-field label="Carbon Contribution" :model-value="sm.ComponentRecords.BMSRecord.CarbonContribution_kgCO2e + ' kgCO\u2082e'" variant="outlined" density="comfortable" readonly prepend-inner-icon="mdi-molecule-co2"/></v-col>
+                                                    </v-row>
+                                                </v-expansion-panel-text>
+                                            </v-expansion-panel>
+                                        </v-expansion-panels>
+                                    </div>
+
+                                </div>
+                            </v-card>
+                        </v-col>
+                    </v-row>
+                </v-card>
+
+            </v-container>
+        </v-main>
+
+        <v-footer class="py-1 px-3" color="surface" elevation="1">
+            <div class="d-flex align-center justify-space-between w-100">
+                <div class="text-caption text-medium-emphasis">&copy; 2025 Deloitte Consulting GmbH</div>
+                <div class="text-caption text-medium-emphasis">EU Battery Regulation 2023/1542</div>
+            </div>
+        </v-footer>
+
+        <v-btn class="fixed-scroll-btn" icon="mdi-arrow-up" size="small"
+               color="primary" variant="tonal" @click="scrollToTop"></v-btn>
+
+    </v-app>
+</div>
+
+<script src="https://unpkg.com/vue@3.5.22/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@3.10.5/dist/vuetify.min.js"></script>
+<script>
+const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+const { createVuetify } = Vuetify;
+
+const vuetify = createVuetify({
+    theme: {
+        defaultTheme: 'light',
+        themes: {
+            light: { colors: { primary: '#00a1de', secondary: '#f69222', surface: '#ffffff', background: '#f5f5f5' } },
+            dark:  { colors: { primary: '#f69222', secondary: '#00a1de', surface: '#1e1e1e', background: '#121212' } }
+        }
+    }
+});
+
+createApp({
+    setup() {
+        const SERVER   = 'https://aasenv.iotdemozone.com';
+        const SM_REPO  = SERVER + '/submodels';
+        const AAS_REPO = SERVER + '/shells';
+        const BASYX_UI = 'https://aasui.iotdemozone.com/aasviewer';
+        const AUTH     = 'Basic YWRtaW46YzQ5azRtMjU=';
+
+        const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+
+        const isLoading    = ref(false);
+        const errorMessage = ref('');
+        const showDebug    = ref(false);
+        const debugLog     = ref([]);
+        const isDarkMode   = ref(false);
+        const activeSection = ref(0);
+        const shell        = reactive({});
+        const sm           = reactive({});
+
+        const sections = [
+            { title: 'Identification',       subtitle: 'Battery identity & EU certification',         icon: 'mdi-identifier' },
+            { title: 'Carbon Footprint',     subtitle: 'Lifecycle CO\u2082 emissions',                icon: 'mdi-molecule-co2' },
+            { title: 'Material Composition', subtitle: 'Critical raw materials & recycled content',   icon: 'mdi-cube-outline' },
+            { title: 'Performance & Health', subtitle: 'Specifications & live SoH from BMS',          icon: 'mdi-battery-heart-outline' },
+            { title: 'Circular Economy',     subtitle: 'Recyclability, second life & 2030 targets',   icon: 'mdi-recycle' },
+            { title: 'Supply Chain',         subtitle: 'Component records & due diligence',           icon: 'mdi-truck-outline' },
+        ];
+
+        const perfItems = computed(() => {
+            const p = sm.PerformanceAndDurability || {};
+            return [
+                { label: 'Capacity',        value: (p.NominalEnergy_kWh||'-')+' kWh',      icon:'mdi-lightning-bolt',        color:'orange'     },
+                { label: 'Max DC Charge',   value: (p.MaxDCFastChargePower_kW||'-')+' kW', icon:'mdi-ev-station',            color:'blue'       },
+                { label: 'Max Discharge',   value: (p.MaxDischargePower_kW||'-')+' kW',    icon:'mdi-battery-minus-outline', color:'red'        },
+                { label: 'Cycle Life',      value: (p.ExpectedCycleLife||'-')+' cycles',   icon:'mdi-repeat',                color:'green'      },
+                { label: 'Calendar Life',   value: (p.ExpectedCalendarLife_years||'-')+' yr', icon:'mdi-calendar-clock',     color:'purple'     },
+                { label: 'Voltage',         value: (p.RatedVoltage_V||'-')+' V',           icon:'mdi-sine-wave',             color:'teal'       },
+                { label: 'Int. Resistance', value: (p.InternalResistance_mOhm||'-')+' m\u03a9', icon:'mdi-resistor',         color:'grey'       },
+                { label: 'Temp Range',      value: (p.OperatingTempRange||'-'),             icon:'mdi-thermometer',           color:'deep-orange'},
+            ];
+        });
+
+        function log(msg) { debugLog.value.push(msg); console.log('[DPP]', msg); }
+
+        function formatKey(key) {
+            return key.replace(/_kg$/, '').replace(/_recycled_pct$/, ' (recycled)')
+                      .replace(/_target_pct$/, ' (target)').replace(/_pct$/, '')
+                      .replace(/_/g,' ').replace(/([A-Z])/g,' $1').trim();
+        }
+
+        function buildBasyxUILink(aasId, smIdShort) {
+            if (!aasId) return '#';
+            let url = BASYX_UI + '?view=SMEView&aas=' + AAS_REPO + '/' + b64url(aasId);
+            if (smIdShort) url += '&smIdShort=' + smIdShort;
+            return url;
+        }
+
+        function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+        function toggleTheme() {
+            isDarkMode.value = !isDarkMode.value;
+            vuetify.theme.global.name.value = isDarkMode.value ? 'dark' : 'light';
+            localStorage.setItem('dpp-theme', isDarkMode.value ? 'dark' : 'light');
+        }
+
+        function flatten(elements) {
+            const out = {};
+            for (const el of elements || []) {
+                if (el.modelType === 'Property') {
+                    out[el.idShort] = el.value;
+                } else if (el.modelType === 'SubmodelElementCollection') {
+                    out[el.idShort] = flatten(el.value);
+                } else if (el.modelType === 'ReferenceElement') {
+                    out[el.idShort] = el.value && el.value.keys && el.value.keys[0] ? el.value.keys[0].value : null;
+                }
+            }
+            return out;
+        }
+
+        async function fetchSubmodel(smId) {
+            const url = SM_REPO + '/' + b64url(smId);
+            log('GET ' + url);
+            const r = await fetch(url, { headers: { Authorization: AUTH } });
+            if (!r.ok) throw new Error('SM ' + smId.split('/').pop() + ' HTTP ' + r.status);
+            const body = await r.json();
+            return flatten(body.submodelElements);
+        }
+
+        async function load(encodedId) {
+            isLoading.value = true;
+            errorMessage.value = '';
+            try {
+                let aasId = encodedId;
+                try {
+                    let padded = encodedId.replace(/-/g,'+').replace(/_/g,'/');
+                    while (padded.length % 4) padded += '=';
+                    aasId = decodeURIComponent(escape(atob(padded)));
+                } catch(e) { log('ID decode fallback: ' + e.message); }
+                log('AAS ID: ' + aasId);
+
+                const shellUrl = AAS_REPO + '/' + b64url(aasId);
+                log('GET ' + shellUrl);
+                const sr = await fetch(shellUrl, { headers: { Authorization: AUTH } });
+                if (!sr.ok) throw new Error('Shell HTTP ' + sr.status);
+                const shellBody = await sr.json();
+                Object.assign(shell, shellBody);
+                log('Shell: ' + shell.idShort);
+
+                for (const ref of shell.submodels || []) {
+                    const smId = ref.keys && ref.keys[0] && ref.keys[0].value;
+                    if (!smId) continue;
+                    const idShort = smId.split('/submodels/')[1];
+                    log('Fetching: ' + idShort);
+                    try {
+                        sm[idShort] = await fetchSubmodel(smId);
+                    } catch(e) {
+                        log('FAILED ' + idShort + ': ' + e.message);
+                    }
+                }
+            } catch(e) {
+                log('FATAL: ' + e.message);
+                errorMessage.value = e.message;
+            } finally {
+                isLoading.value = false;
+            }
+        }
+
+        onMounted(async () => {
+            const saved = localStorage.getItem('dpp-theme');
+            if (saved === 'dark') { isDarkMode.value = true; vuetify.theme.global.name.value = 'dark'; }
+            const id = new URLSearchParams(window.location.search).get('id');
+            if (id) await load(id);
+        });
+
+        watch(activeSection, () => scrollToTop());
+
+        return {
+            isLoading, errorMessage, showDebug, debugLog,
+            isDarkMode, activeSection, shell, sm,
+            sections, perfItems,
+            toggleTheme, scrollToTop, formatKey, buildBasyxUILink,
+        };
+    }
+}).use(vuetify).mount('#app');
+</script>
+</body>
+</html>

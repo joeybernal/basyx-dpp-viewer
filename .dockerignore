@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+
+# Scripts
+*.sh
+build.sh
+deploy.sh
+run-local.sh
+start-server.sh
+
+# Kubernetes
+k8s/
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+
+# Logs
+*.log
+
+# Docker
+Dockerfile
+.dockerignore

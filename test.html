@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Passport Viewer - Test</title>
+    
+    <!-- Vuetify CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@3.10.5/dist/vuetify.min.css" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .section-content {
+            min-height: 400px;
+        }
+        
+        .fixed-scroll-btn {
+            position: fixed;
+            bottom: 50px;
+            right: 16px;
+            z-index: 999999;
+        }
+        
+        .demo-banner {
+            background: linear-gradient(45deg, #0cb2f0, #f69222);
+            color: white;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <v-app>
+            <!-- Header with Deloitte Logo -->
+            <v-app-bar color="primary" elevation="1" density="compact" class="px-3">
+                <div class="d-flex align-center">
+                    <!-- Logo -->
+                    <img 
+                        :src="isDarkMode ? './Logo_dark.svg' : './Logo_light.svg'"
+                        alt="Deloitte Logo" 
+                        style="height: 28px; max-height: 28px;"
+                        class="mr-3" />
+                    
+                    <!-- Divider -->
+                    <v-divider vertical class="mx-2" color="white" opacity="0.3"></v-divider>
+                    
+                    <!-- Title -->
+                    <div class="text-subtitle-1 font-weight-medium text-white">
+                        Digital Passport Viewer - Demo Mode
+                    </div>
+                </div>
+                
+                <v-spacer></v-spacer>
+                
+                <!-- Demo indicator -->
+                <v-chip color="white" text-color="primary" size="x-small" class="mr-2">
+                    <v-icon start size="x-small">mdi-flask</v-icon>
+                    DEMO
+                </v-chip>
+            </v-app-bar>
+            
+            <v-main>
+                <!-- Demo Banner -->
+                <div class="demo-banner">
+                    <h2>Digital Passport Viewer - Demo with Mock Data</h2>
+                    <p>This demonstrates the functionality with sample data</p>
+                </div>
+                
+                <v-container class="pa-6" fluid>
+                    <!-- Main content -->
+                    <v-card class="pa-4" border>
+                        <v-row>
+                            <!-- Sidebar Navigation -->
+                            <v-col cols="12" md="3">
+                                <v-card border class="pa-4" height="100%" rounded="lg" elevation="4" color="surface">
+                                    <v-sheet elevation="2" class="pa-4 mb-2" rounded="lg" border="thin primary">
+                                        <div class="text-h6 font-weight-medium d-flex justify-center align-center">
+                                            <v-icon class="mr-4">mdi-passport</v-icon>Digital Passport
+                                        </div>
+                                        <div class="text-caption mt-2 text-center">
+                                            Sample Electric Battery
+                                        </div>
+                                    </v-sheet>
+                                    <v-list
+                                        active-class="border-thin border-primary border-opacity-25"
+                                        bg-color="transparent"
+                                        class="pa-0 ga-2 d-flex flex-column"
+                                        color="primary"
+                                        density="comfortable"
+                                        slim>
+                                        <v-list-item
+                                            v-for="(section, i) in sections"
+                                            :key="i"
+                                            border="thin surface"
+                                            :prepend-icon="section.icon"
+                                            rounded="lg"
+                                            :subtitle="section.subtitle"
+                                            :title="section.title"
+                                            :value="i"
+                                            style="cursor: pointer; user-select: none"
+                                            :active="activeSection === i"
+                                            @click="activeSection = i" />
+                                    </v-list>
+                                    
+                                    <!-- Product Image in Sidebar -->
+                                    <v-card border class="mt-4 pa-3" rounded="lg" elevation="2">
+                                        <div class="text-subtitle-2 mb-2 d-flex align-center">
+                                            <v-icon class="mr-2" size="small">mdi-image-outline</v-icon>
+                                            Product Image
+                                        </div>
+                                        <div class="d-flex justify-center">
+                                            <!-- Compact battery representation for sidebar -->
+                                            <svg width="200" height="120" xmlns="http://www.w3.org/2000/svg">
+                                                <defs>
+                                                    <linearGradient id="batteryGradientSidebar" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                        <stop offset="0%" style="stop-color:#00a1de;stop-opacity:1" />
+                                                        <stop offset="100%" style="stop-color:#0080b0;stop-opacity:1" />
+                                                    </linearGradient>
+                                                </defs>
+                                                
+                                                <!-- Battery body -->
+                                                <rect x="20" y="30" width="140" height="60" rx="8" fill="url(#batteryGradientSidebar)" stroke="#004080" stroke-width="2"/>
+                                                
+                                                <!-- Battery terminal -->
+                                                <rect x="160" y="45" width="15" height="30" rx="3" fill="#004080"/>
+                                                
+                                                <!-- Battery level indicator -->
+                                                <rect x="25" y="35" width="110" height="12" rx="3" fill="#86BC25"/>
+                                                
+                                                <!-- Text -->
+                                                <text x="90" y="70" text-anchor="middle" font-family="Arial" font-size="10" fill="white" font-weight="bold">XR-5000</text>
+                                                <text x="90" y="82" text-anchor="middle" font-family="Arial" font-size="8" fill="white">Li-Ion</text>
+                                                
+                                                <!-- Compact specs -->
+                                                <text x="100" y="110" text-anchor="middle" font-family="Arial" font-size="7" fill="#666">285.5 kg</text>
+                                            </svg>
+                                        </div>
+                                    </v-card>
+                                </v-card>
+                            </v-col>
+
+                            <!-- Main Content Area -->
+                            <v-col cols="12" md="9">
+                                <v-card border class="pa-4" flat rounded="lg" style="position: relative;">
+                                    <!-- Section Navigation Header -->
+                                    <v-sheet border rounded="lg" class="px-6 pt-4 pb-5 mx-4" elevation="4">
+                                        <v-row>
+                                            <v-col cols="4" class="d-flex align-center">
+                                                <v-btn
+                                                    v-if="activeSection > 0"
+                                                    class="text-buttonText"
+                                                    color="primary"
+                                                    icon="mdi-arrow-left"
+                                                    text
+                                                    @click="activeSection--">
+                                                    <v-icon>mdi-arrow-left</v-icon>
+                                                </v-btn>
+                                            </v-col>
+                                            <v-col cols="4" class="d-flex justify-center align-center">
+                                                <div class="text-center">
+                                                    <div class="text-h6 font-weight-bold">{{ sections[activeSection].title }}</div>
+                                                    <div class="text-body-2 text-medium-emphasis">
+                                                        {{ sections[activeSection].subtitle }}
+                                                    </div>
+                                                </div>
+                                            </v-col>
+                                            <v-col cols="4" class="d-flex justify-end align-center">
+                                                <v-btn
+                                                    v-if="activeSection < sections.length - 1"
+                                                    class="text-buttonText"
+                                                    color="primary"
+                                                    icon="mdi-arrow-right"
+                                                    text
+                                                    @click="activeSection++">
+                                                    <v-icon>mdi-arrow-right</v-icon>
+                                                </v-btn>
+                                            </v-col>
+                                        </v-row>
+                                    </v-sheet>
+                                    
+                                    <!-- Section Content -->
+                                    <div class="section-content">
+                                        <!-- General Information Section -->
+                                        <div v-show="activeSection === 0" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <div class="text-h6 mb-4">General Product Information</div>
+                                                <v-row>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="Lithium-Ion Battery Pack"
+                                                            label="Product Name"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-tag-outline"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="BatteryTech Corp"
+                                                            label="Manufacturer Name"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-factory"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="BTC-LIB-2024-001"
+                                                            label="Product ID / Serial Number"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-barcode"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="BATCH-2024-Q1-A"
+                                                            label="Batch Number"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-numeric"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12">
+                                                        <v-textarea
+                                                            value="High-performance lithium-ion battery pack designed for electric vehicles. Features advanced thermal management and long cycle life."
+                                                            label="Product Description"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            rows="3"
+                                                            prepend-inner-icon="mdi-text"
+                                                            readonly />
+                                                    </v-col>
+                                                </v-row>
+                                            </v-sheet>
+                                        </div>
+                                        
+                                        <!-- Product Carbon Footprint Section -->
+                                        <div v-show="activeSection === 1" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <div class="text-h6 mb-4">Product Carbon Footprint</div>
+                                                <v-row>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="125.5 kg CO2e"
+                                                            label="Total Carbon Footprint"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-leaf"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="85.2 kg CO2e"
+                                                            label="Manufacturing Emissions"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-factory"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="35.8 kg CO2e"
+                                                            label="Material Extraction"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-pickaxe"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="4.5 kg CO2e"
+                                                            label="Transportation"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-truck"
+                                                            readonly />
+                                                    </v-col>
+                                                </v-row>
+                                            </v-sheet>
+                                        </div>
+                                        
+                                        <!-- Material Composition Section -->
+                                        <div v-show="activeSection === 2" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <div class="text-h6 mb-4">Material Composition</div>
+                                                <v-row>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="45.2%"
+                                                            label="Lithium Compounds"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-cube-outline"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="18.5%"
+                                                            label="Cobalt"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-cube-outline"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="12.8%"
+                                                            label="Nickel"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-cube-outline"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="15.1%"
+                                                            label="Aluminum Housing"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-cube-outline"
+                                                            readonly />
+                                                    </v-col>
+                                                </v-row>
+                                            </v-sheet>
+                                        </div>
+                                        
+                                        <!-- Sustainability Section -->
+                                        <div v-show="activeSection === 3" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <div class="text-h6 mb-4">Sustainability</div>
+                                                <v-row>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="85%"
+                                                            label="Recyclability Rate"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-recycle"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="8-10 years"
+                                                            label="Expected Lifespan"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-clock-outline"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="Yes"
+                                                            label="Conflict-Free Minerals"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-check-circle"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="ISO 14001 Certified"
+                                                            label="Environmental Management"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-leaf-circle"
+                                                            readonly />
+                                                    </v-col>
+                                                </v-row>
+                                            </v-sheet>
+                                        </div>
+                                        
+                                        <!-- Compliance Section -->
+                                        <div v-show="activeSection === 4" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <div class="text-h6 mb-4">Compliance</div>
+                                                <v-row>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="UN38.3"
+                                                            label="Transportation Standard"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-certificate-outline"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="IEC 62133"
+                                                            label="Safety Standard"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-shield-check"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="2006/66/EC"
+                                                            label="EU Battery Directive"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-flag-outline"
+                                                            readonly />
+                                                    </v-col>
+                                                    <v-col cols="12" md="6">
+                                                        <v-text-field
+                                                            value="2024-12-31"
+                                                            label="Certification Expiry"
+                                                            variant="outlined"
+                                                            density="comfortable"
+                                                            prepend-inner-icon="mdi-calendar-clock"
+                                                            readonly />
+                                                    </v-col>
+                                                </v-row>
+                                            </v-sheet>
+                                        </div>
+                                    </div>
+                                </v-card>
+                            </v-col>
+                        </v-row>
+                    </v-card>
+                </v-container>
+            </v-main>
+            
+            <!-- Footer -->
+            <v-footer class="py-1 px-2" color="surface" elevation="1">
+                <div class="d-flex align-center justify-space-between w-100">
+                    <!-- Copyright (left side) -->
+                    <div class="text-caption text-medium-emphasis">
+                        © 2025 Deloitte Consulting GmbH
+                    </div>
+                    
+                    <!-- Theme toggle (right side) -->
+                    <v-btn
+                        :icon="isDarkMode ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+                        size="x-small"
+                        variant="text"
+                        :title="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
+                        @click="toggleTheme">
+                    </v-btn>
+                </div>
+            </v-footer>
+            
+            <!-- Scroll to top button -->
+            <v-btn
+                class="fixed-scroll-btn"
+                icon="mdi-arrow-up"
+                @click="scrollToTop">
+            </v-btn>
+        </v-app>
+    </div>
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3.5.22/dist/vue.global.js"></script>
+    <!-- Vuetify -->
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@3.10.5/dist/vuetify.min.js"></script>
+
+    <script type="module">
+        const { createApp, ref, watch, onMounted } = Vue;
+        const { createVuetify } = Vuetify;
+
+        // Create Vuetify theme matching basyx-aas-web-ui
+        const vuetify = createVuetify({
+            theme: {
+                defaultTheme: 'light',
+                themes: {
+                    light: {
+                        colors: {
+                            primary: '#00a1de',
+                            secondary: '#f69222',
+                            surface: '#ffffff',
+                            background: '#f5f5f5'
+                        }
+                    },
+                    dark: {
+                        colors: {
+                            primary: '#f69222',
+                            secondary: '#00a1de',
+                            surface: '#1e1e1e',
+                            background: '#121212'
+                        }
+                    }
+                }
+            }
+        });
+
+        createApp({
+            setup() {
+                const activeSection = ref(0);
+                const isDarkMode = ref(false);
+
+                const sections = [
+                    {
+                        title: 'General Information',
+                        subtitle: 'Product identification and basic details',
+                        icon: 'mdi-information-outline',
+                    },
+                    {
+                        title: 'Product Carbon Footprint',
+                        subtitle: 'Carbon emissions and environmental impact',
+                        icon: 'mdi-leaf',
+                    },
+                    {
+                        title: 'Material Composition',
+                        subtitle: 'Materials and components breakdown',
+                        icon: 'mdi-cube-outline',
+                    },
+                    {
+                        title: 'Sustainability',
+                        subtitle: 'Circular economy and recycling information',
+                        icon: 'mdi-recycle',
+                    },
+                    {
+                        title: 'Compliance',
+                        subtitle: 'Regulatory and certification details',
+                        icon: 'mdi-certificate-outline',
+                    },
+                ];
+
+                function scrollToTop() {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+
+                // Theme toggle function
+                function toggleTheme() {
+                    isDarkMode.value = !isDarkMode.value;
+                    vuetify.theme.global.name.value = isDarkMode.value ? 'dark' : 'light';
+                    
+                    // Save preference to localStorage
+                    localStorage.setItem('digital-passport-theme', isDarkMode.value ? 'dark' : 'light');
+                }
+
+                // Watch for section changes and scroll to top
+                watch(activeSection, () => {
+                    scrollToTop();
+                });
+
+                // Initialize theme on mount
+                onMounted(() => {
+                    // Initialize theme from localStorage or default to light
+                    const savedTheme = localStorage.getItem('digital-passport-theme');
+                    if (savedTheme === 'dark') {
+                        isDarkMode.value = true;
+                        vuetify.theme.global.name.value = 'dark';
+                    } else {
+                        isDarkMode.value = false;
+                        vuetify.theme.global.name.value = 'light';
+                    }
+                });
+
+                return {
+                    activeSection,
+                    sections,
+                    isDarkMode,
+                    scrollToTop,
+                    toggleTheme
+                };
+            }
+        }).use(vuetify).mount('#app');
+    </script>
+</body>
+</html>

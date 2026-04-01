@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: digital-passport-viewer-config
+  namespace: digital-passport
+  labels:
+    app: digital-passport-viewer
+    component: config
+data:
+  # Application configuration
+  server-url: "https://aasenv.deloitte.iotdemozone.de"
+  app-name: "Digital Passport Viewer"
+  app-version: "1.0.0"
+  
+  # Nginx configuration can be mounted if needed
+  # nginx.conf: |
+  #   # Custom nginx configuration would go here

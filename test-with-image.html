@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Passport Viewer - Base64 Image Test</title>
+    
+    <!-- Vuetify CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@3.10.5/dist/vuetify.min.css" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .section-content {
+            min-height: 400px;
+        }
+        
+        .fixed-scroll-btn {
+            position: fixed;
+            bottom: 50px;
+            right: 16px;
+            z-index: 999999;
+        }
+        
+        .demo-banner {
+            background: linear-gradient(45deg, #0cb2f0, #f69222);
+            color: white;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <v-app>
+            <!-- Header with Deloitte Logo -->
+            <v-app-bar color="primary" elevation="1" density="compact" class="px-3">
+                <div class="d-flex align-center">
+                    <!-- Logo -->
+                    <img 
+                        :src="isDarkMode ? './Logo_dark.svg' : './Logo_light.svg'"
+                        alt="Deloitte Logo" 
+                        style="height: 28px; max-height: 28px;"
+                        class="mr-3" />
+                    
+                    <!-- Divider -->
+                    <v-divider vertical class="mx-2" color="white" opacity="0.3"></v-divider>
+                    
+                    <!-- Title -->
+                    <div class="text-subtitle-1 font-weight-medium text-white">
+                        Digital Passport Viewer - Base64 Image Test
+                    </div>
+                </div>
+                
+                <v-spacer></v-spacer>
+                
+                <!-- Demo indicator -->
+                <v-chip color="white" text-color="primary" size="x-small" class="mr-2">
+                    <v-icon start size="x-small">mdi-image</v-icon>
+                    BASE64 TEST
+                </v-chip>
+            </v-app-bar>
+            
+            <v-main>
+                <!-- Demo Banner -->
+                <div class="demo-banner">
+                    <h2>Digital Passport Viewer - Base64 Image Test</h2>
+                    <p>This demonstrates how base64 encoded product images are displayed</p>
+                </div>
+                
+                <v-container class="pa-6" fluid>
+                    <!-- Main content -->
+                    <v-card class="pa-4" border>
+                        <!-- General Information with Sample Base64 Image -->
+                        <v-sheet border="thin" class="pa-4" rounded="lg">
+                            <div class="text-h6 mb-4">General Product Information</div>
+                            
+                            <!-- Product Image Section -->
+                            <v-row class="mb-6">
+                                <v-col cols="12">
+                                    <div class="text-subtitle-1 mb-3 d-flex align-center">
+                                        <v-icon class="mr-2">mdi-image-outline</v-icon>
+                                        Product Image (Base64 Encoded)
+                                    </div>
+                                    <v-card class="d-flex justify-center pa-4" variant="tonal">
+                                        <!-- Simple colored rectangle representing a battery -->
+                                        <svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+                                            <defs>
+                                                <linearGradient id="batteryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" style="stop-color:#00a1de;stop-opacity:1" />
+                                                    <stop offset="100%" style="stop-color:#0080b0;stop-opacity:1" />
+                                                </linearGradient>
+                                            </defs>
+                                            
+                                            <!-- Battery body -->
+                                            <rect x="50" y="50" width="180" height="100" rx="10" fill="url(#batteryGradient)" stroke="#004080" stroke-width="2"/>
+                                            
+                                            <!-- Battery terminal -->
+                                            <rect x="230" y="75" width="20" height="50" rx="5" fill="#004080"/>
+                                            
+                                            <!-- Battery level indicator -->
+                                            <rect x="60" y="60" width="140" height="20" rx="5" fill="#86BC25"/>
+                                            
+                                            <!-- Text -->
+                                            <text x="140" y="120" text-anchor="middle" font-family="Arial" font-size="14" fill="white" font-weight="bold">XR-5000</text>
+                                            <text x="140" y="140" text-anchor="middle" font-family="Arial" font-size="10" fill="white">Li-Ion Battery Pack</text>
+                                            
+                                            <!-- Specs -->
+                                            <text x="150" y="180" text-anchor="middle" font-family="Arial" font-size="8" fill="#666">285.5 kg • 120x80x35 cm • Made in Germany</text>
+                                        </svg>
+                                    </v-card>
+                                    
+                                    <!-- Show the base64 representation -->
+                                    <v-card class="mt-4 pa-3" variant="outlined">
+                                        <div class="text-subtitle-2 mb-2">📝 Base64 Representation (Sample):</div>
+                                        <div class="text-caption font-mono bg-grey-lighten-4 pa-2 rounded" style="word-break: break-all; font-family: 'Courier New', monospace;">
+                                            data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4uLi4
+                                        </div>
+                                        <div class="text-caption mt-2 text-medium-emphasis">
+                                            In your AAS, add a submodel element with idShort="ProductImage" and the full base64 string as the value.
+                                        </div>
+                                    </v-card>
+                                </v-col>
+                            </v-row>
+                            
+                            <!-- Product Details -->
+                            <v-row>
+                                <v-col cols="12" md="6">
+                                    <v-text-field
+                                        value="Lithium-Ion Battery Pack XR-5000"
+                                        label="Product Name"
+                                        variant="outlined"
+                                        density="comfortable"
+                                        prepend-inner-icon="mdi-tag-outline"
+                                        readonly />
+                                </v-col>
+                                <v-col cols="12" md="6">
+                                    <v-text-field
+                                        value="EcoTech Energy Solutions GmbH"
+                                        label="Manufacturer Name"
+                                        variant="outlined"
+                                        density="comfortable"
+                                        prepend-inner-icon="mdi-factory"
+                                        readonly />
+                                </v-col>
+                                <v-col cols="12" md="6">
+                                    <v-text-field
+                                        value="BAT-2024-XR5000-001234"
+                                        label="Product ID"
+                                        variant="outlined"
+                                        density="comfortable"
+                                        prepend-inner-icon="mdi-barcode"
+                                        readonly />
+                                </v-col>
+                                <v-col cols="12" md="6">
+                                    <v-text-field
+                                        value="BATCH-2024Q1-789"
+                                        label="Batch Number"
+                                        variant="outlined"
+                                        density="comfortable"
+                                        prepend-inner-icon="mdi-numeric"
+                                        readonly />
+                                </v-col>
+                            </v-row>
+                        </v-sheet>
+                    </v-card>
+                </v-container>
+            </v-main>
+            
+            <!-- Footer -->
+            <v-footer class="py-1 px-2" color="surface" elevation="1">
+                <div class="d-flex align-center justify-space-between w-100">
+                    <!-- Copyright (left side) -->
+                    <div class="text-caption text-medium-emphasis">
+                        © 2025 Deloitte Consulting GmbH
+                    </div>
+                    
+                    <!-- Theme toggle (right side) -->
+                    <v-btn
+                        :icon="isDarkMode ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+                        size="x-small"
+                        variant="text"
+                        :title="isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'"
+                        @click="toggleTheme">
+                    </v-btn>
+                </div>
+            </v-footer>
+            
+            <!-- Scroll to top button -->
+            <v-btn
+                class="fixed-scroll-btn"
+                icon="mdi-arrow-up"
+                @click="scrollToTop">
+            </v-btn>
+        </v-app>
+    </div>
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3.5.22/dist/vue.global.js"></script>
+    <!-- Vuetify -->
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@3.10.5/dist/vuetify.min.js"></script>
+
+    <script>
+        const { createApp, ref, watch, onMounted } = Vue;
+        const { createVuetify } = Vuetify;
+
+        // Create Vuetify theme matching basyx-aas-web-ui
+        const vuetify = createVuetify({
+            theme: {
+                defaultTheme: 'light',
+                themes: {
+                    light: {
+                        colors: {
+                            primary: '#00a1de',
+                            secondary: '#f69222',
+                            surface: '#ffffff',
+                            background: '#f5f5f5'
+                        }
+                    },
+                    dark: {
+                        colors: {
+                            primary: '#f69222',
+                            secondary: '#00a1de',
+                            surface: '#1e1e1e',
+                            background: '#121212'
+                        }
+                    }
+                }
+            }
+        });
+
+        createApp({
+            setup() {
+                const isDarkMode = ref(false);
+
+                function scrollToTop() {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+
+                // Theme toggle function
+                function toggleTheme() {
+                    isDarkMode.value = !isDarkMode.value;
+                    vuetify.theme.global.name.value = isDarkMode.value ? 'dark' : 'light';
+                    
+                    // Save preference to localStorage
+                    localStorage.setItem('digital-passport-theme', isDarkMode.value ? 'dark' : 'light');
+                }
+
+                // Initialize theme on mount
+                onMounted(() => {
+                    // Initialize theme from localStorage or default to light
+                    const savedTheme = localStorage.getItem('digital-passport-theme');
+                    if (savedTheme === 'dark') {
+                        isDarkMode.value = true;
+                        vuetify.theme.global.name.value = 'dark';
+                    } else {
+                        isDarkMode.value = false;
+                        vuetify.theme.global.name.value = 'light';
+                    }
+                });
+
+                return {
+                    isDarkMode,
+                    scrollToTop,
+                    toggleTheme
+                };
+            }
+        }).use(vuetify).mount('#app');
+    </script>
+</body>
+</html>

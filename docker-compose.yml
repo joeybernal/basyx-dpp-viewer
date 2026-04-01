@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  digital-passport-viewer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: digital-passport-viewer
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.digital-passport.rule=Host(`digital-passport.localhost`)"
+      - "traefik.http.services.digital-passport.loadbalancer.server.port=80"
+    environment:
+      - NGINX_WORKER_PROCESSES=auto
+      - NGINX_WORKER_CONNECTIONS=1024
+
+networks:
+  default:
+    name: digital-passport-network

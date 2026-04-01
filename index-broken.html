@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Passport Viewer</title>
+    
+    <!-- Vuetify CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@3.10.5/dist/vuetify.min.css" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .scrollable-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .section-content {
+            min-height: 400px;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .fixed-scroll-btn {
+            position: fixed;
+            bottom: 64px;
+            right: 16px;
+            z-index: 999999;
+        }
+        
+        .debug-panel {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .debug-section {
+            margin-bottom: 12px;
+        }
+        
+        .debug-label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .debug-value {
+            color: #666;
+            word-break: break-all;
+        }
+        
+        .debug-error {
+            color: #d32f2f;
+        }
+        
+        .debug-success {
+            color: #2e7d32;
+        }
+        
+        .debug-warning {
+            color: #f57c00;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <v-app>
+            <v-main>
+                <v-container class="pa-6" fluid>
+                    <!-- Loading state -->
+                    <div v-if="isLoading" class="d-flex justify-center align-center" style="min-height: 60vh;">
+                        <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+                        <span class="ml-4 text-h6">Loading Digital Passport...</span>
+                    </div>
+                    
+                    <!-- Error state -->
+                    <v-alert v-else-if="errorMessage" type="error" variant="tonal" class="mb-4">
+                        <v-alert-title>Error Loading Digital Passport</v-alert-title>
+                        <div class="mt-2">{{ errorMessage }}</div>
+                    </v-alert>
+                    
+                    <!-- Debug Information Panel -->
+                    <v-card v-if="showDebugInfo" class="debug-panel mb-4" border>
+                        <div class="text-h6 mb-3">🔍 Debug Information</div>
+                        
+                        <div class="debug-section">
+                            <span class="debug-label">URL Parameters:</span>
+                            <div class="debug-value ml-2">
+                                <div>id: {{ debugInfo.urlParams.id || 'NOT PROVIDED' }}</div>
+                                <div>serverUrl: {{ debugInfo.urlParams.serverUrl || 'NOT PROVIDED' }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="debug-section">
+                            <span class="debug-label">Decoded AAS ID:</span>
+                            <div class="debug-value ml-2">{{ debugInfo.decodedAasId || 'N/A' }}</div>
+                        </div>
+                        
+                        <div class="debug-section">
+                            <span class="debug-label">Request URLs:</span>
+                            <div class="debug-value ml-2">
+                                <div v-for="(url, index) in debugInfo.requestUrls" :key="index">{{ index + 1 }}. {{ url }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="debug-section">
+                            <span class="debug-label">Response Status:</span>
+                            <div class="debug-value ml-2">
+                                <div v-for="(response, index) in debugInfo.responses" :key="index" 
+                                     :class="response.success ? 'debug-success' : 'debug-error'">
+                                    {{ index + 1 }}. {{ response.url }} - {{ response.status }} {{ response.statusText }}
+                                    <div v-if="response.error" class="debug-error ml-2">Error: {{ response.error }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="debug-section">
+                            <span class="debug-label">CORS Check:</span>
+                            <div class="debug-value ml-2" :class="debugInfo.corsStatus === 'OK' ? 'debug-success' : 'debug-error'">
+                                {{ debugInfo.corsStatus }}
+                            </div>
+                        </div>
+                        
+                        <div class="debug-section">
+                            <span class="debug-label">Network Timeline:</span>
+                            <div class="debug-value ml-2">
+                                <div v-for="(event, index) in debugInfo.timeline" :key="index">
+                                    [{{ event.timestamp }}] {{ event.message }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <v-btn size="small" color="primary" @click="copyDebugInfo" class="mt-2">
+                            📋 Copy Debug Info
+                        </v-btn>
+                    </v-card>
+                    
+                    <!-- Show message when no AAS is found -->
+                    <v-alert v-else-if="!aasData.id && !isLoading" type="info" variant="tonal" class="mb-4">
+                        <v-alert-title>No AAS Data Available</v-alert-title>
+                        <div class="mt-2">
+                            Please provide a valid AAS URL parameter to view the Digital Passport.
+                            <br><br>
+                            Example: <code>?id=your-aas-id&serverUrl=https://your-basyx-server.com</code>
+                            <br><br>
+                            <v-btn size="small" color="primary" @click="showDebugInfo = true">
+                                🔍 Show Debug Info
+                            </v-btn>
+                        </div>
+                    </v-alert>
+                    
+                    <!-- Main content -->
+                    <v-card v-else class="pa-4" border>
+                        <v-row>
+                            <!-- Sidebar Navigation -->
+                            <v-col cols="12" md="3">
+                                <v-card border class="pa-4" height="100%" rounded="lg" elevation="4" color="surface">
+                                    <v-sheet elevation="2" class="pa-4 mb-2" rounded="lg" border="thin primary">
+                                        <div class="text-h6 font-weight-medium d-flex justify-center align-center">
+                                            <v-icon class="mr-4">mdi-passport</v-icon>Digital Passport
+                                        </div>
+                                        <div v-if="aasData.idShort" class="text-caption mt-2 text-center">
+                                            {{ aasData.idShort }}
+                                        </div>
+                                    </v-sheet>
+                                    <v-list
+                                        active-class="border-thin border-primary border-opacity-25"
+                                        bg-color="transparent"
+                                        class="pa-0 ga-2 d-flex flex-column"
+                                        color="primary"
+                                        density="comfortable"
+                                        slim>
+                                        <v-list-item
+                                            v-for="(section, i) in sections"
+                                            :key="i"
+                                            border="thin surface"
+                                            :prepend-icon="section.icon"
+                                            rounded="lg"
+                                            :subtitle="section.subtitle"
+                                            :title="section.title"
+                                            :value="i"
+                                            style="cursor: pointer; user-select: none"
+                                            :active="activeSection === i"
+                                            @click="activeSection = i" />
+                                    </v-list>
+                                </v-card>
+                            </v-col>
+
+                            <!-- Main Content Area -->
+                            <v-col cols="12" md="9">
+                                <v-card border class="pa-4" flat rounded="lg" style="position: relative;">
+                                    <!-- Section Navigation Header -->
+                                    <v-sheet border rounded="lg" class="px-6 pt-4 pb-5 mx-4" elevation="4">
+                                        <v-row>
+                                            <v-col cols="4" class="d-flex align-center">
+                                                <v-btn
+                                                    v-if="activeSection > 0"
+                                                    class="text-buttonText"
+                                                    color="primary"
+                                                    icon="mdi-arrow-left"
+                                                    text
+                                                    @click="activeSection--">
+                                                    <v-icon>mdi-arrow-left</v-icon>
+                                                </v-btn>
+                                            </v-col>
+                                            <v-col cols="4" class="d-flex justify-center align-center">
+                                                <div class="text-center">
+                                                    <div class="text-h6 font-weight-bold">{{ sections[activeSection].title }}</div>
+                                                    <div class="text-body-2 text-medium-emphasis">
+                                                        {{ sections[activeSection].subtitle }}
+                                                    </div>
+                                                </div>
+                                            </v-col>
+                                            <v-col cols="4" class="d-flex justify-end align-center">
+                                                <v-btn
+                                                    v-if="activeSection < sections.length - 1"
+                                                    class="text-buttonText"
+                                                    color="primary"
+                                                    icon="mdi-arrow-right"
+                                                    text
+                                                    @click="activeSection++">
+                                                    <v-icon>mdi-arrow-right</v-icon>
+                                                </v-btn>
+                                            </v-col>
+                                        </v-row>
+                                    </v-sheet>
+                                    
+                                    <!-- Section Content -->
+                                    <div class="section-content">
+                                        <!-- General Information Section -->
+                                        <div v-show="activeSection === 0" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <general-information-component 
+                                                    :submodel-data="submodelsData['GeneralInformation']">
+                                                </general-information-component>
+                                            </v-sheet>
+                                        </div>
+                                        
+                                        <!-- Product Carbon Footprint Section -->
+                                        <div v-show="activeSection === 1" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <product-carbon-component 
+                                                    :submodel-data="submodelsData['ProductCarbonFootprint']">
+                                                </product-carbon-component>
+                                            </v-sheet>
+                                        </div>
+                                        
+                                        <!-- Material Composition Section -->
+                                        <div v-show="activeSection === 2" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <material-composition-component 
+                                                    :submodel-data="submodelsData['MaterialComposition']">
+                                                </material-composition-component>
+                                            </v-sheet>
+                                        </div>
+                                        
+                                        <!-- Sustainability Section -->
+                                        <div v-show="activeSection === 3" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <sustainability-component 
+                                                    :submodel-data="submodelsData['Sustainability']">
+                                                </sustainability-component>
+                                            </v-sheet>
+                                        </div>
+                                        
+                                        <!-- Compliance Section -->
+                                        <div v-show="activeSection === 4" class="mt-5 mx-4">
+                                            <v-sheet border="thin" class="pa-4" rounded="lg">
+                                                <compliance-component 
+                                                    :submodel-data="submodelsData['Compliance']">
+                                                </compliance-component>
+                                            </v-sheet>
+                                        </div>
+                                    </div>
+                                </v-card>
+                            </v-col>
+                        </v-row>
+                    </v-card>
+                </v-container>
+            </v-main>
+            
+            <!-- Scroll to top button -->
+            <v-btn
+                class="fixed-scroll-btn"
+                icon="mdi-arrow-up"
+                @click="scrollToTop">
+            </v-btn>
+        </v-app>
+    </div>
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3.5.22/dist/vue.global.js"></script>
+    <!-- Vuetify -->
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@3.10.5/dist/vuetify.min.js"></script>
+
+    <!-- Application Components -->
+    <script type="module">
+        const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+        const { createVuetify } = Vuetify;
+
+        // Create Vuetify theme matching basyx-aas-web-ui
+        const vuetify = createVuetify({
+            theme: {
+                defaultTheme: 'light',
+                themes: {
+                    light: {
+                        colors: {
+                            primary: '#0cb2f0',
+                            secondary: '#f69222',
+                            surface: '#ffffff',
+                            background: '#f5f5f5'
+                        }
+                    },
+                    dark: {
+                        colors: {
+                            primary: '#f69222',
+                            secondary: '#0cb2f0',
+                            surface: '#1e1e1e',
+                            background: '#121212'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Individual Section Components
+        const GeneralInformationComponent = {
+            props: ['submodelData'],
+            template: `
+                <div>
+                    <div class="text-h6 mb-4">General Product Information</div>
+                    <v-row v-if="productInfo">
+                        <v-col cols="12" md="6">
+                            <v-text-field
+                                v-model="productInfo.ProductName"
+                                label="Product Name"
+                                variant="outlined"
+                                density="comfortable"
+                                prepend-inner-icon="mdi-tag-outline"
+                                readonly />
+                        </v-col>
+                        <v-col cols="12" md="6">
+                            <v-text-field
+                                v-model="productInfo.ManufacturerName"
+                                label="Manufacturer Name"
+                                variant="outlined"
+                                density="comfortable"
+                                prepend-inner-icon="mdi-factory"
+                                readonly />
+                        </v-col>
+                        <v-col cols="12" md="6">
+                            <v-text-field
+                                v-model="productInfo.ProductID"
+                                label="Product ID / Serial Number"
+                                variant="outlined"
+                                density="comfortable"
+                                prepend-inner-icon="mdi-barcode"
+                                readonly />
+                        </v-col>
+                        <v-col cols="12" md="6">
+                            <v-text-field
+                                v-model="productInfo.BatchNumber"
+                                label="Batch Number"
+                                variant="outlined"
+                                density="comfortable"
+                                prepend-inner-icon="mdi-numeric"
+                                readonly />
+                        </v-col>
+                        <v-col cols="12">
+                            <v-textarea
+                                v-model="productInfo.ProductDescription"
+                                label="Product Description"
+                                variant="outlined"
+                                density="comfortable"
+                                rows="3"
+                                prepend-inner-icon="mdi-text"
+                                readonly />
+                        </v-col>
+                    </v-row>
+                    <div v-else class="text-center py-8">
+                        <v-icon size="64" color="grey-lighten-1">mdi-information-outline</v-icon>
+                        <div class="text-body-1 mt-2">No general information data available</div>
+                    </div>
+                </div>
+            `,
+            computed: {
+                productInfo() {
+                    if (!this.submodelData || !this.submodelData.submodelElements) return null;
+                    
+                    const info = {};
+                    this.submodelData.submodelElements.forEach(element => {
+                        if (element.value !== undefined) {
+                            info[element.idShort] = element.value;
+                        }
+                    });
+                    return Object.keys(info).length > 0 ? info : null;
+                }
+            }
+        };
+
+        const ProductCarbonComponent = {
+            props: ['submodelData'],
+            template: `
+                <div>
+                    <div class="text-h6 mb-4">Product Carbon Footprint</div>
+                    <div v-if="carbonData">
+                        <v-row>
+                            <v-col cols="12" md="6" v-for="(value, key) in carbonData" :key="key">
+                                <v-text-field
+                                    v-model="value"
+                                    :label="formatLabel(key)"
+                                    variant="outlined"
+                                    density="comfortable"
+                                    prepend-inner-icon="mdi-leaf"
+                                    readonly />
+                            </v-col>
+                        </v-row>
+                    </div>
+                    <div v-else class="text-center py-8">
+                        <v-icon size="64" color="grey-lighten-1">mdi-leaf</v-icon>
+                        <div class="text-body-1 mt-2">No carbon footprint data available</div>
+                    </div>
+                </div>
+            `,
+            computed: {
+                carbonData() {
+                    if (!this.submodelData || !this.submodelData.submodelElements) return null;
+                    
+                    const data = {};
+                    this.submodelData.submodelElements.forEach(element => {
+                        if (element.value !== undefined) {
+                            data[element.idShort] = element.value;
+                        }
+                    });
+                    return Object.keys(data).length > 0 ? data : null;
+                }
+            },
+            methods: {
+                formatLabel(key) {
+                    return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                }
+            }
+        };
+
+        const MaterialCompositionComponent = {
+            props: ['submodelData'],
+            template: `
+                <div>
+                    <div class="text-h6 mb-4">Material Composition</div>
+                    <div v-if="materialData">
+                        <v-row>
+                            <v-col cols="12" md="6" v-for="(value, key) in materialData" :key="key">
+                                <v-text-field
+                                    v-model="value"
+                                    :label="formatLabel(key)"
+                                    variant="outlined"
+                                    density="comfortable"
+                                    prepend-inner-icon="mdi-cube-outline"
+                                    readonly />
+                            </v-col>
+                        </v-row>
+                    </div>
+                    <div v-else class="text-center py-8">
+                        <v-icon size="64" color="grey-lighten-1">mdi-cube-outline</v-icon>
+                        <div class="text-body-1 mt-2">No material composition data available</div>
+                    </div>
+                </div>
+            `,
+            computed: {
+                materialData() {
+                    if (!this.submodelData || !this.submodelData.submodelElements) return null;
+                    
+                    const data = {};
+                    this.submodelData.submodelElements.forEach(element => {
+                        if (element.value !== undefined) {
+                            data[element.idShort] = element.value;
+                        }
+                    });
+                    return Object.keys(data).length > 0 ? data : null;
+                }
+            },
+            methods: {
+                formatLabel(key) {
+                    return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                }
+            }
+        };
+
+        const SustainabilityComponent = {
+            props: ['submodelData'],
+            template: `
+                <div>
+                    <div class="text-h6 mb-4">Sustainability</div>
+                    <div v-if="sustainabilityData">
+                        <v-row>
+                            <v-col cols="12" md="6" v-for="(value, key) in sustainabilityData" :key="key">
+                                <v-text-field
+                                    v-model="value"
+                                    :label="formatLabel(key)"
+                                    variant="outlined"
+                                    density="comfortable"
+                                    prepend-inner-icon="mdi-recycle"
+                                    readonly />
+                            </v-col>
+                        </v-row>
+                    </div>
+                    <div v-else class="text-center py-8">
+                        <v-icon size="64" color="grey-lighten-1">mdi-recycle</v-icon>
+                        <div class="text-body-1 mt-2">No sustainability data available</div>
+                    </div>
+                </div>
+            `,
+            computed: {
+                sustainabilityData() {
+                    if (!this.submodelData || !this.submodelData.submodelElements) return null;
+                    
+                    const data = {};
+                    this.submodelData.submodelElements.forEach(element => {
+                        if (element.value !== undefined) {
+                            data[element.idShort] = element.value;
+                        }
+                    });
+                    return Object.keys(data).length > 0 ? data : null;
+                }
+            },
+            methods: {
+                formatLabel(key) {
+                    return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                }
+            }
+        };
+
+        const ComplianceComponent = {
+            props: ['submodelData'],
+            template: `
+                <div>
+                    <div class="text-h6 mb-4">Compliance</div>
+                    <div v-if="complianceData">
+                        <v-row>
+                            <v-col cols="12" md="6" v-for="(value, key) in complianceData" :key="key">
+                                <v-text-field
+                                    v-model="value"
+                                    :label="formatLabel(key)"
+                                    variant="outlined"
+                                    density="comfortable"
+                                    prepend-inner-icon="mdi-certificate-outline"
+                                    readonly />
+                            </v-col>
+                        </v-row>
+                    </div>
+                    <div v-else class="text-center py-8">
+                        <v-icon size="64" color="grey-lighten-1">mdi-certificate-outline</v-icon>
+                        <div class="text-body-1 mt-2">No compliance data available</div>
+                    </div>
+                </div>
+            `,
+            computed: {
+                complianceData() {
+                    if (!this.submodelData || !this.submodelData.submodelElements) return null;
+                    
+                    const data = {};
+                    this.submodelData.submodelElements.forEach(element => {
+                        if (element.value !== undefined) {
+                            data[element.idShort] = element.value;
+                        }
+                    });
+                    return Object.keys(data).length > 0 ? data : null;
+                }
+            },
+            methods: {
+                formatLabel(key) {
+                    return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                }
+            }
+        };
+
+        // Main Application
+        const { createApp } = Vue;
+        
+        createApp({
+            components: {
+                'general-information-component': GeneralInformationComponent,
+                'product-carbon-component': ProductCarbonComponent,
+                'material-composition-component': MaterialCompositionComponent,
+                'sustainability-component': SustainabilityComponent,
+                'compliance-component': ComplianceComponent
+            },
+            setup() {
+                const activeSection = ref(0);
+                const isLoading = ref(false);
+                const errorMessage = ref('');
+                const aasData = reactive({});
+                const submodelsData = reactive({});
+                const showDebugInfo = ref(false);
+                const debugInfo = reactive({
+                    urlParams: {},
+                    decodedAasId: '',
+                    requestUrls: [],
+                    responses: [],
+                    corsStatus: 'Unknown',
+                    timeline: []
+                });
+
+                const sections = [
+                    {
+                        title: 'General Information',
+                        subtitle: 'Product identification and basic details',
+                        icon: 'mdi-information-outline',
+                    },
+                    {
+                        title: 'Product Carbon Footprint',
+                        subtitle: 'Carbon emissions and environmental impact',
+                        icon: 'mdi-leaf',
+                    },
+                    {
+                        title: 'Material Composition',
+                        subtitle: 'Materials and components breakdown',
+                        icon: 'mdi-cube-outline',
+                    },
+                    {
+                        title: 'Sustainability',
+                        subtitle: 'Circular economy and recycling information',
+                        icon: 'mdi-recycle',
+                    },
+                    {
+                        title: 'Compliance',
+                        subtitle: 'Regulatory and certification details',
+                        icon: 'mdi-certificate-outline',
+                    },
+                ];
+
+                // Parse URL parameters
+                function getUrlParameter(name) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    return urlParams.get(name);
+                }
+                
+                // Add debug timeline entry
+                function addDebugEvent(message) {
+                    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+                    debugInfo.timeline.push({ timestamp, message });
+                    console.log(`[DEBUG ${timestamp}] ${message}`);
+                }
+                
+                // Decode base64url AAS ID
+                function decodeAasId(encodedId) {
+                    try {
+                        // Add padding if needed
+                        let padded = encodedId;
+                        while (padded.length % 4) {
+                            padded += '=';
+                        }
+                        // Replace URL-safe characters
+                        padded = padded.replace(/-/g, '+').replace(/_/g, '/');
+                        const decoded = atob(padded);
+                        addDebugEvent(`Successfully decoded AAS ID: ${decoded}`);
+                        return decoded;
+                    } catch (error) {
+                        addDebugEvent(`Failed to decode AAS ID: ${error.message}`);
+                        return encodedId; // Return original if decode fails
+                    }
+                }
+                
+                // Test CORS by making a simple request
+                async function testCors(serverUrl) {
+                    try {
+                        addDebugEvent(`Testing CORS for server: ${serverUrl}`);
+                        const response = await fetch(`${serverUrl}/shells`, {
+                            method: 'HEAD',
+                            mode: 'cors'
+                        });
+                        debugInfo.corsStatus = 'OK';
+                        addDebugEvent('CORS test passed');
+                        return true;
+                    } catch (error) {
+                        debugInfo.corsStatus = `CORS Error: ${error.message}`;
+                        addDebugEvent(`CORS test failed: ${error.message}`);
+                        return false;
+                    }
+                }
+                
+                // Copy debug information to clipboard
+                function copyDebugInfo() {
+                    const debugText = `
+DIGITAL PASSPORT VIEWER DEBUG INFO
+=================================
+
+URL Parameters:
+- id: ${debugInfo.urlParams.id || 'NOT PROVIDED'}
+- serverUrl: ${debugInfo.urlParams.serverUrl || 'NOT PROVIDED'}
+
+Decoded AAS ID: ${debugInfo.decodedAasId || 'N/A'}
+
+Request URLs:
+${debugInfo.requestUrls.map((url, i) => `${i + 1}. ${url}`).join('\n')}
+
+Responses:
+${debugInfo.responses.map((r, i) => `${i + 1}. ${r.url} - ${r.status} ${r.statusText}${r.error ? ' (Error: ' + r.error + ')' : ''}`).join('\n')}
+
+CORS Status: ${debugInfo.corsStatus}
+
+Timeline:
+${debugInfo.timeline.map(e => `[${e.timestamp}] ${e.message}`).join('\n')}
+`;
+                    
+                    navigator.clipboard.writeText(debugText).then(() => {
+                        alert('Debug information copied to clipboard!');
+                    }).catch(err => {
+                        console.error('Failed to copy debug info:', err);
+                        // Fallback: show debug info in alert
+                        alert(debugText);
+                    });
+                }
+
+                // Fetch AAS data from basyx server
+                async function fetchAASData(id, serverUrl) {
+                    isLoading.value = true;
+                    errorMessage.value = '';
+                    showDebugInfo.value = true;
+                    
+                    // Clear previous debug data
+                    debugInfo.requestUrls = [];
+                    debugInfo.responses = [];
+                    debugInfo.timeline = [];
+
+                    try {
+                        addDebugEvent(`Starting AAS fetch - Server: ${serverUrl}, AAS ID: ${id}`);
+                        
+                        // Test CORS first
+                        await testCors(serverUrl);
+                        
+                        // Decode the AAS ID
+                        const decodedAasId = decodeAasId(id);
+                        debugInfo.decodedAasId = decodedAasId;
+                        
+                        // Try multiple possible URL formats
+                        const possibleUrls = [
+                            `${serverUrl}/shells/${encodeURIComponent(id)}`,
+                            `${serverUrl}/shells/${encodeURIComponent(decodedAasId)}`,
+                            `${serverUrl}/shells/${id}`,
+                            `${serverUrl}/shells/${decodedAasId}`
+                        ];
+                        
+                        debugInfo.requestUrls = possibleUrls;
+                        addDebugEvent(`Trying ${possibleUrls.length} different URL formats`);
+                        
+                        let aasResult = null;
+                        let lastError = null;
+                        
+                        for (const url of possibleUrls) {
+                            try {
+                                addDebugEvent(`Attempting request to: ${url}`);
+                                
+                                const aasResponse = await fetch(url, {
+                                    method: 'GET',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json'
+                                    },
+                                    mode: 'cors'
+                                });
+                                
+                                const responseInfo = {
+                                    url: url,
+                                    status: aasResponse.status,
+                                    statusText: aasResponse.statusText,
+                                    success: aasResponse.ok,
+                                    error: null
+                                };
+                                
+                                if (aasResponse.ok) {
+                                    aasResult = await aasResponse.json();
+                                    responseInfo.success = true;
+                                    addDebugEvent(`✅ Success! Got AAS data from: ${url}`);
+                                    console.log('AAS Data:', aasResult);
+                                } else {
+                                    const errorText = await aasResponse.text();
+                                    responseInfo.error = errorText || 'No error details';
+                                    addDebugEvent(`❌ Failed: ${aasResponse.status} ${aasResponse.statusText} - ${errorText}`);
+                                    lastError = new Error(`${aasResponse.status} ${aasResponse.statusText}: ${errorText}`);
+                                }
+                                
+                                debugInfo.responses.push(responseInfo);
+                                
+                                if (aasResult) break; // Success, stop trying other URLs
+                                
+                            } catch (error) {
+                                const responseInfo = {
+                                    url: url,
+                                    status: 'Network Error',
+                                    statusText: '',
+                                    success: false,
+                                    error: error.message
+                                };
+                                
+                                debugInfo.responses.push(responseInfo);
+                                addDebugEvent(`❌ Network error for ${url}: ${error.message}`);
+                                lastError = error;
+                            }
+                        }
+                        
+                        if (!aasResult) {
+                            throw lastError || new Error('All URL attempts failed');
+                        }
+                        
+                        // Update aasData reactively
+                        Object.assign(aasData, aasResult);
+                        addDebugEvent(`Successfully loaded AAS: ${aasResult.idShort || aasResult.id}`);
+                        
+                        // Fetch submodels
+                        if (aasResult.submodels && aasResult.submodels.length > 0) {
+                            addDebugEvent(`Found ${aasResult.submodels.length} submodel references`);
+                            for (const submodelRef of aasResult.submodels) {
+                                const submodelId = submodelRef.keys?.[0]?.value;
+                                if (submodelId) {
+                                    await fetchSubmodelData(submodelId, serverUrl);
+                                }
+                            }
+                        } else {
+                            addDebugEvent('No submodels found in AAS');
+                        }
+                        
+                        addDebugEvent('✅ AAS fetch completed successfully');
+                        
+                    } catch (error) {
+                        console.error('Error fetching AAS data:', error);
+                        addDebugEvent(`❌ Final error: ${error.message}`);
+                        errorMessage.value = error.message || 'Failed to load AAS data';
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                async function fetchSubmodelData(submodelId, serverUrl) {
+                    try {
+                        addDebugEvent(`Fetching submodel: ${submodelId}`);
+                        
+                        // Base64url encode the submodel ID for URL
+                        const encodedSubmodelId = btoa(submodelId).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                        const submodelUrl = `${serverUrl}/submodels/${encodedSubmodelId}`;
+                        debugInfo.requestUrls.push(submodelUrl);
+                        
+                        const submodelResponse = await fetch(submodelUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                            mode: 'cors'
+                        });
+                        
+                        const responseInfo = {
+                            url: submodelUrl,
+                            status: submodelResponse.status,
+                            statusText: submodelResponse.statusText,
+                            success: submodelResponse.ok,
+                            error: null
+                        };
+                        
+                        if (!submodelResponse.ok) {
+                            const errorText = await submodelResponse.text();
+                            responseInfo.error = errorText;
+                            debugInfo.responses.push(responseInfo);
+                            addDebugEvent(`⚠️ Failed to fetch submodel ${submodelId}: ${submodelResponse.status} ${errorText}`);
+                            return;
+                        }
+                        
+                        const submodel = await submodelResponse.json();
+                        debugInfo.responses.push(responseInfo);
+                        
+                        if (submodel && submodel.idShort) {
+                            submodelsData[submodel.idShort] = submodel;
+                            addDebugEvent(`✅ Loaded submodel: ${submodel.idShort} (${submodel.submodelElements?.length || 0} elements)`);
+                            console.log(`Loaded submodel: ${submodel.idShort}`, submodel);
+                        } else {
+                            addDebugEvent(`⚠️ Submodel ${submodelId} has no idShort or is invalid`);
+                        }
+                        
+                    } catch (error) {
+                        addDebugEvent(`❌ Error fetching submodel ${submodelId}: ${error.message}`);
+                        console.error(`Error fetching submodel ${submodelId}:`, error);
+                    }
+                }
+
+                function scrollToTop() {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+
+                // Watch for section changes and scroll to top
+                watch(activeSection, () => {
+                    scrollToTop();
+                });
+
+                // Initialize on mount
+                onMounted(async () => {
+                    const id = getUrlParameter('id');
+                    const serverUrl = getUrlParameter('serverUrl');
+                    
+                    // Store URL params for debugging
+                    debugInfo.urlParams = { id, serverUrl };
+
+                    addDebugEvent('Application initialized');
+                    addDebugEvent(`URL Parameters - id: ${id || 'MISSING'}, serverUrl: ${serverUrl || 'MISSING'}`);
+
+                    if (id && serverUrl) {
+                        addDebugEvent('Both parameters provided, starting fetch...');
+                        await fetchAASData(id, serverUrl);
+                    } else {
+                        addDebugEvent('❌ Missing required URL parameters');
+                        showDebugInfo.value = true;
+                        console.log('Missing URL parameters. Expected: ?id=<id>&serverUrl=<url>');
+                    }
+                });
+
+                return {
+                    activeSection,
+                    isLoading,
+                    errorMessage,
+                    aasData,
+                    submodelsData,
+                    sections,
+                    showDebugInfo,
+                    debugInfo,
+                    scrollToTop,
+                    copyDebugInfo
+                };
+            }
+        }).use(vuetify).mount('#app');
+    </script>
+</body>
+</html>
