@@ -488,11 +488,12 @@ const vuetify = createVuetify({
 
 createApp({
     setup() {
-        const SERVER   = 'https://aasenv.iotdemozone.com';
-        const SM_REPO  = SERVER + '/submodels';
-        const AAS_REPO = SERVER + '/shells';
         const BASYX_UI = 'https://aasui.iotdemozone.com/aasviewer';
-        const AUTH     = 'Basic YWRtaW46YzQ5azRtMjU=';
+        // All BaSyx requests go through the local proxy to avoid CORS.
+        // dpp_proxy.py forwards /proxy/* to aasenv.iotdemozone.com and injects CORS headers.
+        const SM_REPO  = '/proxy/submodels';
+        const AAS_REPO = '/proxy/shells';
+        const AUTH     = '';  // auth is handled server-side in the proxy
 
         const b64url = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 
@@ -538,7 +539,8 @@ createApp({
 
         function buildBasyxUILink(aasId, smIdShort) {
             if (!aasId) return '#';
-            let url = BASYX_UI + '?view=SMEView&aas=' + AAS_REPO + '/' + b64url(aasId);
+            const REAL_AAS_REPO = 'https://aasenv.iotdemozone.com/shells';
+            let url = BASYX_UI + '?view=SMEView&aas=' + REAL_AAS_REPO + '/' + b64url(aasId);
             if (smIdShort) url += '&smIdShort=' + smIdShort;
             return url;
         }
@@ -616,8 +618,10 @@ createApp({
         onMounted(async () => {
             const saved = localStorage.getItem('dpp-theme');
             if (saved === 'dark') { isDarkMode.value = true; vuetify.theme.global.name.value = 'dark'; }
-            const id = new URLSearchParams(window.location.search).get('id');
-            if (id) await load(id);
+            // Default to the VoltaTech VT-75 passport if no id param is provided
+            const DEFAULT_ID = 'aHR0cHM6Ly92b2x0YXRlY2guZGUvYWFzL2JhdHRlcnktcGFzc3BvcnQvVk9MVDc1LTIwMjQtMDAx';
+            const id = new URLSearchParams(window.location.search).get('id') || DEFAULT_ID;
+            await load(id);
         });
 
         watch(activeSection, () => scrollToTop());
